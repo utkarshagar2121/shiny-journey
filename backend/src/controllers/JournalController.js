@@ -184,7 +184,7 @@ export const deleteMedia = async (req, res) => {
     }
 
     // delete from Cloudinary
-    const cloudinaryId = getPublicId(mediaItem.url);
+    const cloudinaryId = publicId(mediaItem.url);
     await cloudinary.uploader.destroy(cloudinaryId, {
       resource_type: mediaItem.type,
     });

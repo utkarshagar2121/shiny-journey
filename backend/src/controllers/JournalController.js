@@ -1,5 +1,6 @@
 import JourneyEntry from "../models/journeyEntry_model.js";
 import cloudinary from "../config/cloudinary.js";
+import sharp from "sharp";
 // export const createEntry = async (req, res) => {
 //   try {
 //     const { title, content, media } = req.body;
@@ -19,6 +20,15 @@ import cloudinary from "../config/cloudinary.js";
 //   }
 // };
 
+const compressImage = async (file) => {
+  if (!file.mimetype.startsWith("image/")) {
+    return file.buffer;
+  }
+  return await sharp(file.buffer)
+    .resize({ width: 1280, withoutEnlargement: true })
+    .webp({ quality: 80 })
+    .toBuffer();
+};
 export const createEntry = async (req, res) => {
   try {
     const { title, content } = req.body;
@@ -27,7 +37,9 @@ export const createEntry = async (req, res) => {
 
     //if files
     if (req.files && req.files.length > 0) {
+
       for (const file of req.files) {
+        const processedBuffer = await compressImage(file);
         const uploadResult = await new Promise((resolve, reject) => {
           const stream = cloudinary.uploader.upload_stream(
             { resource_type: "auto" },
@@ -36,7 +48,7 @@ export const createEntry = async (req, res) => {
               else resolve(result);
             },
           );
-          stream.end(file.buffer);
+          stream.end(processedBuffer);
         });
 
         media.push({
@@ -235,29 +247,28 @@ export const uploadmedia = async (req, res) => {
   }
 };
 
+export const getEntry = async (req, res) => {
+  try {
+    const id = req.params.id;
 
-export const getEntry=async(req,res)=>{
-try{  const id=req.params.id;
-
-  const entry=await JourneyEntry.findById(id);
-  if(!entry){
-    return res.status(404).json({
-      message:"Entry not found"
-    })
+    const entry = await JourneyEntry.findById(id);
+    if (!entry) {
+      return res.status(404).json({
+        message: "Entry not found",
+      });
+    }
+    if (entry.userId.toString() !== req.user.id) {
+      return res.status(403).json({
+        message: "Access Denied",
+      });
+    }
+    res.status(200).json({
+      entry,
+    });
+  } catch (error) {
+    console.log("error in fetching the indivisual entry ", error.message);
+    res.status(500).json({
+      message: "Server error while fetching",
+    });
   }
-  if(entry.userId.toString() !== req.user.id){
-    return res.status(403).json({
-      message:"Access Denied"
-    })
-  }
-  res.status(200).json({
-    entry
-  })
-}catch(error){
-  console.log("error in fetching the indivisual entry ",error.message);
-  res.status(500).json({
-    message:"Server error while fetching"
-  })
-}
-
-}
+};

@@ -234,3 +234,30 @@ export const uploadmedia = async (req, res) => {
     });
   }
 };
+
+
+export const getEntry=async(req,res)=>{
+try{  const id=req.params.id;
+
+  const entry=await JourneyEntry.findById(id);
+  if(!entry){
+    return res.status(404).json({
+      message:"Entry not found"
+    })
+  }
+  if(entry.userId.toString() !== req.user.id){
+    return res.status(403).json({
+      message:"Access Denied"
+    })
+  }
+  res.status(200).json({
+    entry
+  })
+}catch(error){
+  console.log("error in fetching the indivisual entry ",error.message);
+  res.status(500).json({
+    message:"Server error while fetching"
+  })
+}
+
+}

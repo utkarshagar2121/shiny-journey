@@ -6,6 +6,7 @@ import {
   deleteEntry,
   deleteMedia,
   uploadmedia,
+  getEntry,
 } from "../controllers/JournalController.js";
 import { protect } from "../middlewares/authMiddleware.js";
 import { validateEntry } from "../middlewares/validation.js";
@@ -21,6 +22,7 @@ router.post(
   createEntry,
 );
 router.get("/myentries", protect, getMyEntries);
+router.get("/:id", protect, getEntry);
 router.post("/update/:id", protect, validateEntry, updateEntry);
 router.delete("/delete/:id", protect, deleteEntry);
 router.delete("/:entryId/media/:mediaId", protect, deleteMedia);

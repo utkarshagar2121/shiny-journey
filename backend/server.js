@@ -10,6 +10,7 @@ connectDb();
 import authRoutes from "./src/routes/authRoutes.js";
 import journalroutes from "./src/routes/journalroutes.js";
 import { errorHandler } from "./src/middlewares/errorhandler.js";
+import { authLimiter, apiLimiter } from "./src/middlewares/rateLimitater.js";
 
 const app = express();
 
@@ -22,8 +23,8 @@ app.get("/", (req, res) => {
 });
 
 //routes
-app.use("/api/auth", authRoutes);
-app.use("/api/journal", journalroutes);
+app.use("/api/auth", authLimiter,authRoutes);
+app.use("/api/journal",apiLimiter, journalroutes);
 
 // error handler must be registered after all routes
 app.use(errorHandler);

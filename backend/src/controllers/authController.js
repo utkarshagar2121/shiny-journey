@@ -2,7 +2,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import asyncHandler from "express-async-handler";
 import User from "../models/User-Model.js";
-import RefreshToken from "../database/refreshToken.js"; // ✅ correct import path
+import RefreshToken from "../models/refreshToken.js"; // ✅ correct import path
 
 const generateAccessToken = (userId) => {
   return jwt.sign({ id: userId }, process.env.JWT_SECRET, {

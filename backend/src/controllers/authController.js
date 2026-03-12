@@ -2,6 +2,19 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import asyncHandler from "express-async-handler";
 import User from "../models/User-Model.js";
+import RefreshToken from "../database/refreshToken.js"; // ✅ correct import path
+
+const generateAccessToken = (userId) => {
+  return jwt.sign({ id: userId }, process.env.JWT_SECRET, {
+    expiresIn: "15m",
+  });
+};
+
+const generateRefreshToken = (userId) => {
+  return jwt.sign({ id: userId }, process.env.REFRESH_TOKEN_SECRET, {
+    expiresIn: "7d",
+  });
+};
 
 // ================= SIGNUP =================
 export const signup = asyncHandler(async (req, res) => {
@@ -64,17 +77,65 @@ export const login = asyncHandler(async (req, res) => {
     throw error;
   }
 
-  const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-    expiresIn: "7d",
+  const accessToken = generateAccessToken(user._id);
+  const refreshToken = generateRefreshToken(user._id);
+
+  await RefreshToken.create({
+    userId: user._id,
+    token: refreshToken,
   });
 
   res.json({
     message: "Login successful",
-    token,
+    accessToken,
+    refreshToken,
     user: {
       id: user._id,
       name: user.name,
       email: user.email,
     },
   });
+});
+
+// ================= REFRESH =================
+export const refresh = asyncHandler(async (req, res) => {
+  const { refreshToken } = req.body;
+
+  if (!refreshToken) {
+    const error = new Error("Refresh token required");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const storedToken = await RefreshToken.findOne({ token: refreshToken });
+  if (!storedToken) {
+    const error = new Error("Invalid refresh token");
+    error.statusCode = 403;
+    throw error;
+  }
+
+  const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
+
+  const newAccessToken = generateAccessToken(decoded.id);
+
+  res.json({
+    // ✅ actually sends the response now
+    message: "Token refreshed",
+    accessToken: newAccessToken,
+  });
+});
+
+// ================= LOGOUT =================
+export const logout = asyncHandler(async (req, res) => {
+  const { refreshToken } = req.body;
+
+  if (!refreshToken) {
+    const error = new Error("Refresh token required");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  await RefreshToken.findOneAndDelete({ token: refreshToken });
+
+  res.json({ message: "Logout successful" });
 });

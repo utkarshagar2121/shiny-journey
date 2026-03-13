@@ -1,13 +1,9 @@
 import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "@/context/AuthContext";
 
 export default function Header() {
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
-
-  const handleLogout = () => {
-    // will hook up to AuthContext later
-    console.log("logout");
-    navigate("/");
-  };
 
   return (
     <header
@@ -27,14 +23,13 @@ export default function Header() {
         📖 Memoria
       </Link>
 
-
       {/* RIGHT — User + Logout */}
       <div className="flex items-center gap-4">
         <span className="text-sm" style={{ color: "#a08c72" }}>
-          Hi, Utkarsh
+          Hi, {user?.name.split(" ")[0] || "There"}
         </span>
         <button
-          onClick={handleLogout}
+          onClick={logout}
           className="px-4 py-2 rounded-full text-xs font-semibold tracking-wide hover:opacity-80 transition-opacity"
           style={{
             backgroundColor: "#f5f0e8",

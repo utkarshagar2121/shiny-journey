@@ -15,7 +15,12 @@ import { authLimiter, apiLimiter } from "./src/middlewares/rateLimitater.js";
 const app = express();
 
 //middleware
-app.use(cors());
+app.use(
+  cors({
+    origin: "http://localhost:5173",
+    credentials: true,
+  }),
+);
 app.use(express.json());
 
 app.get("/", (req, res) => {
@@ -23,8 +28,8 @@ app.get("/", (req, res) => {
 });
 
 //routes
-app.use("/api/auth", authLimiter,authRoutes);
-app.use("/api/journal",apiLimiter, journalroutes);
+app.use("/api/auth", authLimiter, authRoutes);
+app.use("/api/journal", apiLimiter, journalroutes);
 
 // error handler must be registered after all routes
 app.use(errorHandler);

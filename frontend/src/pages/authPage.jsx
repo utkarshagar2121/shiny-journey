@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 const quotes = [
   { text: "Write what should not be forgotten.", author: "Isabel Allende" },
@@ -18,15 +20,18 @@ const quotes = [
 ];
 
 export default function AuthPage() {
+  const { login, signup } = useAuth();
+  const navigate = useNavigate();
+
   const [isFlipped, setIsFlipped] = useState(false);
   const [quoteIndex, setQuoteIndex] = useState(0);
   const [visible, setVisible] = useState(true);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  // login form state
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
 
-  // signup form state
   const [signupName, setSignupName] = useState("");
   const [signupEmail, setSignupEmail] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
@@ -42,16 +47,38 @@ export default function AuthPage() {
     return () => clearInterval(interval);
   }, []);
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    console.log("login", loginEmail, loginPassword);
+    setError("");
+    setLoading(true);
+    try {
+      console.log(loginEmail)
+      console.log(loginPassword)
+      await login(loginEmail, loginPassword);
+      // navigate happens inside login()
+    } catch (err) {
+      setError(
+        err.response?.data?.message || "Login failed. Please try again.",
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleSignup = (e) => {
+  const handleSignup = async (e) => {
     e.preventDefault();
-    console.log("signup", signupName, signupEmail, signupPassword);
+    setError("");
+    setLoading(true);
+    try {
+      await signup(signupName, signupEmail, signupPassword);
+    } catch (err) {
+      setError(
+        err.response?.data?.message || "Signup failed. Please try again.",
+      );
+    } finally {
+      setLoading(false);
+    }
   };
-
   return (
     <div
       className="min-h-screen flex flex-col"
@@ -150,13 +177,27 @@ export default function AuthPage() {
                     }}
                   />
                 </div>
+                {/* add inside both form — just above the submit button */}
+                {error && (
+                  <p
+                    className="text-xs text-center"
+                    style={{ color: "#b04040" }}
+                  >
+                    {error}
+                  </p>
+                )}
 
                 <button
                   type="submit"
+                  disabled={loading}
                   className="w-full py-3 rounded-xl text-sm font-semibold tracking-wide mt-1 hover:opacity-90 transition-opacity"
-                  style={{ backgroundColor: "#c4a882", color: "#fffdf9" }}
+                  style={{
+                    backgroundColor: "#c4a882",
+                    color: "#fffdf9",
+                    opacity: loading ? 0.7 : 1,
+                  }}
                 >
-                  Sign in
+                  {loading ? "Please wait..." : "Sign in"}
                 </button>
               </form>
 
@@ -166,7 +207,10 @@ export default function AuthPage() {
               >
                 No account yet?{" "}
                 <button
-                  onClick={() => setIsFlipped(true)}
+                  onClick={() => {
+                    setIsFlipped(true);
+                    setError("");
+                  }}
                   className="font-medium hover:underline"
                   style={{
                     color: "#8a6f50",
@@ -268,13 +312,27 @@ export default function AuthPage() {
                     }}
                   />
                 </div>
+                {/* add inside both form — just above the submit button */}
+                {error && (
+                  <p
+                    className="text-xs text-center"
+                    style={{ color: "#b04040" }}
+                  >
+                    {error}
+                  </p>
+                )}
 
                 <button
                   type="submit"
+                  disabled={loading}
                   className="w-full py-3 rounded-xl text-sm font-semibold tracking-wide mt-1 hover:opacity-90 transition-opacity"
-                  style={{ backgroundColor: "#c4a882", color: "#fffdf9" }}
+                  style={{
+                    backgroundColor: "#c4a882",
+                    color: "#fffdf9",
+                    opacity: loading ? 0.7 : 1,
+                  }}
                 >
-                  Create account
+                  {loading ? "Please wait..." : "Sign Up"}
                 </button>
               </form>
 
@@ -284,7 +342,10 @@ export default function AuthPage() {
               >
                 Already have an account?{" "}
                 <button
-                  onClick={() => setIsFlipped(false)}
+                  onClick={() => {
+                    setIsFlipped(false);
+                    setError("");
+                  }}
                   className="font-medium hover:underline"
                   style={{
                     color: "#8a6f50",

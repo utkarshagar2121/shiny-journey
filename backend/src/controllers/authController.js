@@ -54,6 +54,8 @@ export const signup = asyncHandler(async (req, res) => {
 // ================= LOGIN =================
 export const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
+  console.log(email);
+  console.log(password);
 
   if (!email || !password) {
     const error = new Error("Email and password required");

@@ -115,6 +115,13 @@ export const refresh = asyncHandler(async (req, res) => {
   }
 
   const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
+  const user = await User.findById(decoded.id).select("-password");
+
+  if (!user) {
+    const error = new Error("User not found");
+    error.statusCode = 404;
+    throw error;
+  }
 
   const newAccessToken = generateAccessToken(decoded.id);
 
@@ -122,6 +129,11 @@ export const refresh = asyncHandler(async (req, res) => {
     // ✅ actually sends the response now
     message: "Token refreshed",
     accessToken: newAccessToken,
+    user: {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+    },
   });
 });
 

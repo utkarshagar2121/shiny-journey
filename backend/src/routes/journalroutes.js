@@ -23,7 +23,13 @@ router.post(
 );
 router.get("/myentries", protect, getMyEntries);
 router.get("/:id", protect, getEntryById);
-router.put("/update/:id", protect, validateEntry, updateEntry);
+router.put(
+  "/update/:id",
+  protect,
+  upload.array("files", 10),
+  validateEntry,
+  updateEntry,
+);
 router.delete("/delete/:id", protect, deleteEntry);
 router.delete("/:entryId/block/:blockId", protect, deleteBlock);
 router.post("/upload", protect, upload.single("file"), uploadmedia);

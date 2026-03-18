@@ -1,73 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useApi } from "../api/useApi";
+import { useAuth } from "../context/AuthContext";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
-
-const dummyEntries = [
-  {
-    _id: "1",
-    title: "A quiet morning in the hills",
-    content:
-      "Woke up early today. The mist was still settling over the valley when I stepped outside with my coffee. There's something about mornings like these that make everything feel possible.",
-    createdAt: "2026-03-10",
-    media: [
-      {
-        type: "image",
-        url: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400",
-      },
-    ],
-  },
-  {
-    _id: "2",
-    title: "Thoughts on slowing down",
-    content:
-      "Been thinking a lot about pace lately. Not just physical pace, but the pace of thought, of conversation, of decision making.",
-    createdAt: "2026-03-08",
-    media: [],
-  },
-  {
-    _id: "3",
-    title: "The bookshop on 5th",
-    content:
-      "Found a tiny bookshop tucked between a laundry and a bakery. Spent two hours in there. Left with four books I didn't plan to buy and zero regrets.",
-    createdAt: "2026-03-06",
-    media: [
-      {
-        type: "image",
-        url: "https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=400",
-      },
-    ],
-  },
-  {
-    _id: "4",
-    title: "Recipe: Daal I'll never forget",
-    content:
-      "Tried to recreate my grandmother's daal today. Got close but not quite there. The secret might be in the tempering — more ghee, slower heat.",
-    createdAt: "2026-03-04",
-    media: [],
-  },
-  {
-    _id: "5",
-    title: "Evening walk by the river",
-    content:
-      "The river was unusually calm today. Walked for almost an hour without checking my phone once. A small victory.",
-    createdAt: "2026-03-02",
-    media: [
-      {
-        type: "image",
-        url: "https://images.unsplash.com/photo-1501854140801-50d01698950b?w=400",
-      },
-    ],
-  },
-  {
-    _id: "6",
-    title: "New project started",
-    content:
-      "Finally started the side project I've been putting off for months. Just a few lines of code but it felt good to begin.",
-    createdAt: "2026-02-28",
-    media: [],
-  },
-];
 
 const formatDate = (dateStr) => {
   return new Date(dateStr).toLocaleDateString("en-US", {
@@ -85,6 +21,8 @@ function EntryCard({ entry, onClick }) {
     setClicked(true);
     setTimeout(() => onClick(), 300);
   };
+
+  const preview = entry.blocks?.find((b) => b.type === "text");
 
   return (
     <div
@@ -110,37 +48,20 @@ function EntryCard({ entry, onClick }) {
             : "0 1px 4px rgba(92,74,50,0.06)",
       }}
     >
-      {/* Thumbnail */}
-      {entry.media &&
-        entry.media.length > 0 &&
-        entry.media[0].type === "image" && (
-          <img
-            src={entry.media[0].url}
-            alt={entry.title}
-            className="w-full object-cover"
-            style={{ maxHeight: "200px" }}
-          />
-        )}
-
       <div className="p-5">
-        {/* Date */}
         <p
           className="text-xs tracking-widest uppercase mb-2"
           style={{ color: "#b0997c" }}
         >
           {formatDate(entry.createdAt)}
         </p>
-
-        {/* Title */}
         <h3
           className="text-base font-semibold mb-2 leading-snug"
           style={{ color: "#5c4a32", fontFamily: "Georgia, serif" }}
         >
           {entry.title}
         </h3>
-
-        {/* Content preview */}
-        {entry.content && (
+        {preview && (
           <p
             className="text-sm leading-relaxed"
             style={{
@@ -151,7 +72,7 @@ function EntryCard({ entry, onClick }) {
               overflow: "hidden",
             }}
           >
-            {entry.content}
+            {preview.value}
           </p>
         )}
       </div>
@@ -161,11 +82,52 @@ function EntryCard({ entry, onClick }) {
 
 export default function DashboardPage() {
   const navigate = useNavigate();
-  const [search, setSearch] = useState("");
+  const api = useApi();
+  // eslint-disable-next-line no-unused-vars
+  const { user, accessToken } = useAuth();
 
-  const filtered = dummyEntries.filter((e) =>
-    e.title.toLowerCase().includes(search.toLowerCase()),
-  );
+  const [entries, setEntries] = useState([]);
+  const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+
+  const fetchEntries = async (searchTerm = "", pageNum = 1) => {
+    // console.log("fetching the entries of access token", accessToken);
+    setLoading(true);
+    setError(null);
+    try {
+      // console.log("try here");
+      const res = await api.get("/journal/myentries", {
+        params: { search: searchTerm, page: pageNum, limit: 9 },
+      });
+      // console.log("journal response ", res);
+      setEntries(res.data.entries);
+      setTotalPages(res.data.pages);
+    } catch (err) {
+      console.log(err);
+      setError("Failed to load entries.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (accessToken) {
+      // ← only fetch when token is ready
+      fetchEntries();
+    }
+  }, [accessToken]);
+
+  useEffect(() => {
+    if (!accessToken) return;
+    const timer = setTimeout(() => {
+      fetchEntries(search, 1);
+      setPage(1);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [search, accessToken]);
 
   return (
     <div
@@ -185,7 +147,7 @@ export default function DashboardPage() {
               Your Journal
             </h1>
             <p className="text-sm mt-1" style={{ color: "#a08c72" }}>
-              {filtered.length} {filtered.length === 1 ? "entry" : "entries"}
+              {loading ? "Loading..." : `${entries.length} entries`}
             </p>
           </div>
           <button
@@ -202,7 +164,7 @@ export default function DashboardPage() {
           </button>
         </div>
 
-        {/* Search bar */}
+        {/* Search */}
         <div className="mb-8">
           <input
             type="text"
@@ -218,31 +180,124 @@ export default function DashboardPage() {
           />
         </div>
 
+        {/* Error */}
+        {error && (
+          <p className="text-center text-sm py-10" style={{ color: "#b04040" }}>
+            {error}
+          </p>
+        )}
+
+        {/* Loading skeleton */}
+        {loading && (
+          <div
+            className="masonry"
+            style={{ columnCount: 3, columnGap: "16px" }}
+          >
+            {[...Array(6)].map((_, i) => (
+              <div
+                key={i}
+                className="rounded-2xl"
+                style={{
+                  backgroundColor: "#fffdf9",
+                  height: i % 2 === 0 ? "180px" : "140px",
+                  marginBottom: "16px",
+                  breakInside: "avoid",
+                  opacity: 0.6,
+                }}
+              />
+            ))}
+          </div>
+        )}
+
         {/* Empty state */}
-        {filtered.length === 0 && (
+        {!loading && !error && entries.length === 0 && (
           <div className="flex flex-col items-center justify-center py-20">
             <p
               className="text-lg mb-2"
               style={{ color: "#a08c72", fontFamily: "Georgia, serif" }}
             >
-              No entries found
+              {search ? "No entries found" : "No entries yet"}
             </p>
-            <p className="text-sm" style={{ color: "#b0997c" }}>
-              Try a different search or create a new entry
+            <p className="text-sm mb-6" style={{ color: "#b0997c" }}>
+              {search
+                ? "Try a different search"
+                : "Start writing your first entry"}
             </p>
+            {!search && (
+              <button
+                onClick={() => navigate("/create")}
+                className="px-5 py-2 rounded-full text-sm font-semibold hover:opacity-90 transition-opacity"
+                style={{
+                  backgroundColor: "#c4a882",
+                  color: "#fffdf9",
+                  border: "none",
+                  cursor: "pointer",
+                }}
+              >
+                + New Entry
+              </button>
+            )}
           </div>
         )}
 
         {/* Masonry grid */}
-        <div className="masonry" style={{ columnCount: 3, columnGap: "16px" }}>
-          {filtered.map((entry) => (
-            <EntryCard
-              key={entry._id}
-              entry={entry}
-              onClick={() => navigate(`/entry/${entry._id}`)}
-            />
-          ))}
-        </div>
+        {!loading && entries.length > 0 && (
+          <div
+            className="masonry"
+            style={{ columnCount: 3, columnGap: "16px" }}
+          >
+            {entries.map((entry) => (
+              <EntryCard
+                key={entry._id}
+                entry={entry}
+                onClick={() => navigate(`/entry/${entry._id}`)}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Pagination */}
+        {!loading && totalPages > 1 && (
+          <div className="flex items-center justify-center gap-3 mt-10">
+            <button
+              onClick={() => {
+                setPage((p) => p - 1);
+                fetchEntries(search, page - 1);
+              }}
+              disabled={page === 1}
+              className="px-4 py-2 rounded-full text-sm hover:opacity-80 transition-opacity"
+              style={{
+                backgroundColor: "#f5f0e8",
+                color: "#7a6652",
+                border: "none",
+                cursor: page === 1 ? "not-allowed" : "pointer",
+                opacity: page === 1 ? 0.4 : 1,
+              }}
+            >
+              ← Prev
+            </button>
+            <span className="text-sm" style={{ color: "#a08c72" }}>
+              {page} / {totalPages}
+            </span>
+            <button
+              onClick={() => {
+                setPage((p) => p + 1);
+                fetchEntries(search, page + 1);
+              }}
+              disabled={page === totalPages}
+              className="px-4 py-2 rounded-full text-sm hover:opacity-80 transition-opacity"
+              style={{
+                backgroundColor: "#f5f0e8",
+                color: "#7a6652",
+                border: "none",
+                cursor: page === totalPages ? "not-allowed" : "pointer",
+                opacity: page === totalPages ? 0.4 : 1,
+              }}
+            >
+              Next →
+            </button>
+          </div>
+        )}
       </main>
 
       <Footer />

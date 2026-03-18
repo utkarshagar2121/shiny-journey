@@ -1,14 +1,17 @@
 import axios from "axios";
-import { useAuth } from "@/context/AuthContext.jsx";
+import { useAuth } from "../context/AuthContext";
 
 export function useApi() {
-  const { accessToken, refresh, logout } = useAuth();
+  const { tokenRef, refresh, logout } = useAuth();
+
   const api = axios.create({
-    baseURL: "https://localhost:5000/api",
+    baseURL: "http://localhost:5000/api",
   });
+
+  // eslint-disable-next-line react-hooks/refs
   api.interceptors.request.use((config) => {
-    if (accessToken) {
-      config.header.Authorization = `Bearer ${accessToken}`;
+    if (tokenRef.current) {
+      config.headers.Authorization = `Bearer ${tokenRef.current}`;
     }
     return config;
   });
@@ -17,7 +20,10 @@ export function useApi() {
     (response) => response,
     async (error) => {
       const original = error.config;
-      if (error.response?.status === 401 && !original._retry) {
+      const isMultipart = original.headers?.["Content-Type"]?.includes(
+        "multipart/form-data",
+      );
+      if (error.response?.status === 401 && !original._retry && !isMultipart) {
         original._retry = true;
         try {
           const newToken = await refresh();
@@ -30,5 +36,6 @@ export function useApi() {
       return Promise.reject(error);
     },
   );
+
   return api;
 }

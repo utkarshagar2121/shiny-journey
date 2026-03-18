@@ -14,6 +14,12 @@ import { authLimiter, apiLimiter } from "./src/middlewares/rateLimitater.js";
 
 const app = express();
 
+// console.log("JWT_SECRET length:", process.env.JWT_SECRET?.length);
+// console.log(
+//   "JWT_SECRET last char code:",
+//   process.env.JWT_SECRET?.charCodeAt(process.env.JWT_SECRET.length - 1),
+// );
+
 //middleware
 app.use(
   cors({

@@ -1,20 +1,24 @@
-import { createContext, useContext, useState, useEffect, useRef } from "react";
-import { useNavigate, useNavigationType } from "react-router-dom";
-import api from "@/api/axios";
+import { useState, useEffect, useRef, createContext, useContext } from "react";
+import { useNavigate } from "react-router-dom";
+import api from "../api/axios";
 
-const authContext = createContext(null);
+const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [accessToken, setAccessToken] = useState(null);
-  const [loading, setLoading] = useState(false);
-
+  const [loading, setLoading] = useState(true);
+  const tokenRef = useRef(null); // ← always holds latest token
   const navigate = useNavigate();
+
+  // keep ref in sync with state
+  useEffect(() => {
+    tokenRef.current = accessToken;
+  }, [accessToken]);
 
   useEffect(() => {
     const tryRestore = async () => {
       const storedRefresh = localStorage.getItem("refreshToken");
-      console.log("tryRestore running, token:", storedRefresh);
       if (!storedRefresh) {
         setLoading(false);
         return;
@@ -23,11 +27,10 @@ export function AuthProvider({ children }) {
         const res = await api.post("/auth/refresh", {
           refreshToken: storedRefresh,
         });
-        // console.log("refresh response:", res.data);
         setAccessToken(res.data.accessToken);
+        tokenRef.current = res.data.accessToken; // ← set immediately, don't wait for effect
         setUser(res.data.user);
-      } catch (err) {
-        // console.log("refresh failed:", err.response?.data || err.message);
+      } catch {
         localStorage.removeItem("refreshToken");
       } finally {
         setLoading(false);
@@ -35,33 +38,38 @@ export function AuthProvider({ children }) {
     };
     tryRestore();
   }, []);
+
   const login = async (email, password) => {
     const res = await api.post("/auth/login", { email, password });
     const { accessToken, refreshToken, user } = res.data;
     setAccessToken(accessToken);
+    tokenRef.current = accessToken; // ← set immediately
     setUser(user);
     setLoading(false);
     localStorage.setItem("refreshToken", refreshToken);
     navigate("/dashboard");
   };
+
   const signup = async (name, email, password) => {
-    const res = await api.post("/auth/signup", { name, email, password });
+    await api.post("/auth/signup", { name, email, password });
     await login(email, password);
   };
+
   const logout = async () => {
     try {
-      const storedRefreshToken = localStorage.getItem("refreshToken");
-      if (storedRefreshToken) {
-        await api.post("/auth/logout", { refreshToken: storedRefreshToken });
-      }
-    } catch {
-    } finally {
+      const storedRefresh = localStorage.getItem("refreshToken");
+      if (storedRefresh)
+        await api.post("/auth/logout", { refreshToken: storedRefresh });
+    } catch { /* empty */ } finally {
       setAccessToken(null);
+      tokenRef.current = null;
       setUser(null);
+      setLoading(false);
       localStorage.removeItem("refreshToken");
       navigate("/auth");
     }
   };
+
   const refresh = async () => {
     const storedRefresh = localStorage.getItem("refreshToken");
     if (!storedRefresh) throw new Error("No refresh token");
@@ -69,17 +77,30 @@ export function AuthProvider({ children }) {
       refreshToken: storedRefresh,
     });
     setAccessToken(res.data.accessToken);
+    tokenRef.current = res.data.accessToken; // ← set immediately
     setUser(res.data.user);
     return res.data.accessToken;
   };
+
   return (
-    <authContext.Provider
-      value={{ user, accessToken, loading, login, signup, logout, refresh }}
+    <AuthContext.Provider
+      value={{
+        user,
+        accessToken,
+        tokenRef,
+        loading,
+        login,
+        signup,
+        logout,
+        refresh,
+      }}
     >
       {children}
-    </authContext.Provider>
+    </AuthContext.Provider>
   );
 }
+
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
-  return useContext(authContext);
+  return useContext(AuthContext);
 }

@@ -7,6 +7,7 @@ import AuthPage from "./pages/authPage.jsx";
 import DashboardPage from "./pages/DashboardPage.jsx";
 import EntryDetailPage from "./pages/EntryDetailPage.jsx";
 import CreateEntryPage from "./pages/CreateEntryPage.jsx";
+import EditEntryPage from "./pages/EditEntryPage.jsx";
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -71,6 +72,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <CreateEntryPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/entry/:id/edit"
+            element={
+              <ProtectedRoute>
+                <EditEntryPage />
               </ProtectedRoute>
             }
           />

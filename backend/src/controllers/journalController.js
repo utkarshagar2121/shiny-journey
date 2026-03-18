@@ -71,6 +71,7 @@ export const createEntry = async (req, res) => {
 
 // ================= GET ALL ENTRIES =================
 export const getMyEntries = async (req, res) => {
+  // console.log("here");
   try {
     const page = Number(req.query.page) || 1;
     const limit = Number(req.query.limit) || 5;
@@ -123,18 +124,42 @@ export const getEntryById = async (req, res) => {
 export const updateEntry = async (req, res) => {
   try {
     const entry = await JourneyEntry.findById(req.params.id);
-
-    if (!entry) {
-      return res.status(404).json({ message: "Entry not found" });
-    }
-    if (entry.userId.toString() !== req.user.id) {
+    if (!entry) return res.status(404).json({ message: "Entry not found" });
+    if (entry.userId.toString() !== req.user.id)
       return res.status(403).json({ message: "Invalid authorization" });
-    }
 
     entry.title = req.body.title || entry.title;
 
     if (req.body.blocks) {
-      entry.blocks = JSON.parse(req.body.blocks);
+      const parsedBlocks = JSON.parse(req.body.blocks);
+      const finalBlocks = [];
+
+      for (const block of parsedBlocks) {
+        if (block.type === "text") {
+          finalBlocks.push({ type: "text", value: block.value });
+        } else if (block.fileIndex !== undefined) {
+          // new media file uploaded
+          const file = req.files?.[block.fileIndex];
+          if (file) {
+            let buffer = file.buffer;
+            if (block.type === "image") buffer = await compressImage(buffer);
+            const result = await uploadToCloudinary(buffer);
+            finalBlocks.push({
+              type: block.type,
+              url: result.secure_url,
+              publicId: result.public_id,
+            });
+          }
+        } else {
+          // existing media block — keep as is
+          finalBlocks.push({
+            type: block.type,
+            url: block.url,
+            publicId: block.publicId,
+          });
+        }
+      }
+      entry.blocks = finalBlocks;
     }
 
     await entry.save();

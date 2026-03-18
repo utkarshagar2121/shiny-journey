@@ -1,10 +1,10 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import Header from "../components/Header";
-import { useApi } from "../api/useApi";
 import Footer from "../components/Footer";
-
-// ─── Camera Modal ─────────────────────────────────────────
+import { useApi } from "../api/useApi";
+import { useAuth } from "../context/AuthContext";
+// ─── Camera Modal (same as CreateEntryPage) ───────────────
 function CameraModal({ onCapture, onClose }) {
   const videoRef = useRef(null);
   const streamRef = useRef(null);
@@ -12,7 +12,7 @@ function CameraModal({ onCapture, onClose }) {
   const chunksRef = useRef([]);
   const fileInputRef = useRef(null);
 
-  const [mode, setMode] = useState("photo"); // "photo" | "video"
+  const [mode, setMode] = useState("photo");
   const [recording, setRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const [cameraError, setCameraError] = useState(null);
@@ -22,9 +22,8 @@ function CameraModal({ onCapture, onClose }) {
   const timerRef = useRef(null);
 
   const startStream = useCallback(async (facing) => {
-    if (streamRef.current) {
+    if (streamRef.current)
       streamRef.current.getTracks().forEach((t) => t.stop());
-    }
     setCameraReady(false);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -37,24 +36,22 @@ function CameraModal({ onCapture, onClose }) {
         videoRef.current.onloadedmetadata = () => setCameraReady(true);
       }
     } catch (err) {
-      if (err.name === "NotFoundError" || err.name === "DevicesNotFoundError") {
+      if (err.name === "NotFoundError" || err.name === "DevicesNotFoundError")
         setCameraError("No camera found on this device.");
-      } else if (err.name === "NotAllowedError") {
+      else if (err.name === "NotAllowedError")
         setCameraError(
           "Camera permission denied. Please allow access in your browser settings and refresh.",
         );
-      } else {
-        setCameraError("Could not access camera: " + err.message);
-      }
+      else setCameraError("Could not access camera: " + err.message);
     }
   }, []);
 
   useEffect(() => {
     navigator.mediaDevices?.enumerateDevices().then((devices) => {
-      const videoInputs = devices.filter((d) => d.kind === "videoinput");
-      setHasMultipleCameras(videoInputs.length > 1);
+      setHasMultipleCameras(
+        devices.filter((d) => d.kind === "videoinput").length > 1,
+      );
     });
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     startStream("user");
     return () => {
       if (streamRef.current)
@@ -80,8 +77,7 @@ function CameraModal({ onCapture, onClose }) {
         const file = new File([blob], `photo_${Date.now()}.jpg`, {
           type: "image/jpeg",
         });
-        const preview = URL.createObjectURL(file);
-        onCapture({ file, preview, type: "image" });
+        onCapture({ file, preview: URL.createObjectURL(file), type: "image" });
       },
       "image/jpeg",
       0.9,
@@ -100,8 +96,7 @@ function CameraModal({ onCapture, onClose }) {
       const file = new File([blob], `video_${Date.now()}.webm`, {
         type: "video/webm",
       });
-      const preview = URL.createObjectURL(file);
-      onCapture({ file, preview, type: "video" });
+      onCapture({ file, preview: URL.createObjectURL(file), type: "video" });
     };
     recorder.start();
     setRecording(true);
@@ -119,8 +114,7 @@ function CameraModal({ onCapture, onClose }) {
     const file = e.target.files[0];
     if (!file) return;
     const type = file.type.startsWith("video/") ? "video" : "image";
-    const preview = URL.createObjectURL(file);
-    onCapture({ file, preview, type });
+    onCapture({ file, preview: URL.createObjectURL(file), type });
     e.target.value = "";
   };
 
@@ -137,7 +131,6 @@ function CameraModal({ onCapture, onClose }) {
         style={{ backgroundColor: "#1a1410" }}
       >
         {cameraError ? (
-          /* ── Error state ── */
           <div className="flex flex-col items-center justify-center p-10 gap-5">
             <p className="text-2xl">📷</p>
             <p
@@ -145,9 +138,6 @@ function CameraModal({ onCapture, onClose }) {
               style={{ color: "#c4a882" }}
             >
               {cameraError}
-            </p>
-            <p className="text-center text-xs" style={{ color: "#7a6652" }}>
-              You can still upload from your device below
             </p>
             <button
               onClick={() => fileInputRef.current.click()}
@@ -176,7 +166,6 @@ function CameraModal({ onCapture, onClose }) {
           </div>
         ) : (
           <>
-            {/* ── Live viewfinder ── */}
             <div
               className="relative"
               style={{ backgroundColor: "#000", minHeight: "300px" }}
@@ -193,8 +182,6 @@ function CameraModal({ onCapture, onClose }) {
                   display: "block",
                 }}
               />
-
-              {/* Loading overlay */}
               {!cameraReady && (
                 <div
                   className="absolute inset-0 flex items-center justify-center"
@@ -205,8 +192,6 @@ function CameraModal({ onCapture, onClose }) {
                   </p>
                 </div>
               )}
-
-              {/* Recording indicator */}
               {recording && (
                 <div
                   className="absolute top-4 left-1/2 flex items-center gap-2 px-3 py-1 rounded-full"
@@ -222,7 +207,6 @@ function CameraModal({ onCapture, onClose }) {
                       height: "8px",
                       borderRadius: "50%",
                       backgroundColor: "#e05555",
-                      animation: "pulse 1s infinite",
                     }}
                   />
                   <span
@@ -233,8 +217,6 @@ function CameraModal({ onCapture, onClose }) {
                   </span>
                 </div>
               )}
-
-              {/* Mode toggle — top right */}
               <div
                 className="absolute top-4 right-4 flex rounded-full overflow-hidden"
                 style={{
@@ -246,7 +228,7 @@ function CameraModal({ onCapture, onClose }) {
                   onClick={() => {
                     if (!recording) setMode("photo");
                   }}
-                  className="px-3 py-1 text-xs font-medium transition-all"
+                  className="px-3 py-1 text-xs font-medium"
                   style={{
                     backgroundColor:
                       mode === "photo" ? "#c4a882" : "transparent",
@@ -261,7 +243,7 @@ function CameraModal({ onCapture, onClose }) {
                   onClick={() => {
                     if (!recording) setMode("video");
                   }}
-                  className="px-3 py-1 text-xs font-medium transition-all"
+                  className="px-3 py-1 text-xs font-medium"
                   style={{
                     backgroundColor:
                       mode === "video" ? "#c4a882" : "transparent",
@@ -274,10 +256,7 @@ function CameraModal({ onCapture, onClose }) {
                 </button>
               </div>
             </div>
-
-            {/* ── Controls bar ── */}
             <div className="flex items-center justify-between px-6 py-5">
-              {/* Close */}
               <button
                 onClick={onClose}
                 style={{
@@ -293,8 +272,6 @@ function CameraModal({ onCapture, onClose }) {
               >
                 ✕
               </button>
-
-              {/* Shutter / Record button */}
               {mode === "photo" ? (
                 <button
                   onClick={capturePhoto}
@@ -306,16 +283,7 @@ function CameraModal({ onCapture, onClose }) {
                     backgroundColor: cameraReady ? "#fffdf9" : "#555",
                     border: "4px solid rgba(255,255,255,0.25)",
                     cursor: cameraReady ? "pointer" : "not-allowed",
-                    transition:
-                      "transform 0.1s ease, background-color 0.2s ease",
                   }}
-                  onMouseDown={(e) =>
-                    cameraReady &&
-                    (e.currentTarget.style.transform = "scale(0.9)")
-                  }
-                  onMouseUp={(e) =>
-                    (e.currentTarget.style.transform = "scale(1)")
-                  }
                 />
               ) : (
                 <button
@@ -332,7 +300,6 @@ function CameraModal({ onCapture, onClose }) {
                         : "#555",
                     border: "4px solid rgba(255,255,255,0.25)",
                     cursor: cameraReady ? "pointer" : "not-allowed",
-                    transition: "background-color 0.2s ease",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -350,8 +317,6 @@ function CameraModal({ onCapture, onClose }) {
                   )}
                 </button>
               )}
-
-              {/* Flip or upload */}
               {hasMultipleCameras ? (
                 <button
                   onClick={flipCamera}
@@ -384,12 +349,10 @@ function CameraModal({ onCapture, onClose }) {
                 </button>
               )}
             </div>
-
-            {/* Upload from device — always accessible at the bottom */}
             <div className="px-6 pb-6">
               <button
                 onClick={() => fileInputRef.current.click()}
-                className="w-full py-2 rounded-2xl text-xs font-medium hover:opacity-80 transition-opacity"
+                className="w-full py-2 rounded-2xl text-xs font-medium hover:opacity-80"
                 style={{
                   backgroundColor: "rgba(255,255,255,0.07)",
                   color: "#a08c72",
@@ -402,8 +365,6 @@ function CameraModal({ onCapture, onClose }) {
             </div>
           </>
         )}
-
-        {/* Hidden file input — accepts both image and video */}
         <input
           ref={fileInputRef}
           type="file"
@@ -419,7 +380,6 @@ function CameraModal({ onCapture, onClose }) {
 // ─── Text Block ───────────────────────────────────────────
 function TextBlock({ block, onChange, onDelete }) {
   const textareaRef = useRef(null);
-
   useEffect(() => {
     const el = textareaRef.current;
     if (el) {
@@ -442,7 +402,6 @@ function TextBlock({ block, onChange, onDelete }) {
           color: "#5c4a32",
           fontFamily: "Georgia, serif",
           border: "1px solid #ede8df",
-          transition: "border-color 0.2s ease",
           overflow: "hidden",
         }}
         onFocus={(e) => (e.target.style.borderColor = "#c4a882")}
@@ -468,12 +427,14 @@ function TextBlock({ block, onChange, onDelete }) {
 function ImageBlock({ block, onDelete }) {
   const [enlarged, setEnlarged] = useState(false);
   const [hovered, setHovered] = useState(false);
+  // existing blocks have `url`, new captures have `preview`
+  const src = block.preview || block.url;
 
   return (
     <div className="relative group">
       <div
         className="relative cursor-pointer inline-block"
-        onClick={() => setEnlarged((prev) => !prev)}
+        onClick={() => setEnlarged((p) => !p)}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
         style={{
@@ -482,8 +443,8 @@ function ImageBlock({ block, onDelete }) {
         }}
       >
         <img
-          src={block.preview}
-          alt="upload preview"
+          src={src}
+          alt="journal entry"
           className="rounded-xl object-cover w-full"
           style={{
             height: enlarged ? "400px" : "90px",
@@ -528,6 +489,7 @@ function ImageBlock({ block, onDelete }) {
 function VideoBlock({ block, onDelete }) {
   const [expanded, setExpanded] = useState(false);
   const [hovered, setHovered] = useState(false);
+  const src = block.preview || block.url;
 
   return (
     <div
@@ -536,7 +498,7 @@ function VideoBlock({ block, onDelete }) {
     >
       <div
         className="flex items-center gap-2 px-3 py-2 rounded-xl cursor-pointer"
-        onClick={() => setExpanded((prev) => !prev)}
+        onClick={() => setExpanded((p) => !p)}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
         style={{
@@ -598,7 +560,7 @@ function VideoBlock({ block, onDelete }) {
         }}
       >
         <video
-          src={block.preview}
+          src={src}
           controls
           className="w-full rounded-2xl"
           style={{ maxHeight: "400px", display: "block" }}
@@ -620,10 +582,9 @@ function VideoBlock({ block, onDelete }) {
   );
 }
 
-// ─── Add Block Buttons (between blocks) ───────────────────
+// ─── Add Block Buttons ────────────────────────────────────
 function AddBlockButtons({ onAddText, onAddMedia }) {
   const [visible, setVisible] = useState(false);
-
   return (
     <div
       className="flex items-center gap-2 py-1"
@@ -641,7 +602,7 @@ function AddBlockButtons({ onAddText, onAddMedia }) {
       >
         <button
           onClick={onAddText}
-          className="text-xs px-3 py-1 rounded-full hover:opacity-80 transition-opacity"
+          className="text-xs px-3 py-1 rounded-full hover:opacity-80"
           style={{
             backgroundColor: "#f5f0e8",
             color: "#7a6652",
@@ -653,7 +614,7 @@ function AddBlockButtons({ onAddText, onAddMedia }) {
         </button>
         <button
           onClick={onAddMedia}
-          className="text-xs px-3 py-1 rounded-full hover:opacity-80 transition-opacity"
+          className="text-xs px-3 py-1 rounded-full hover:opacity-80"
           style={{
             backgroundColor: "#f5f0e8",
             color: "#7a6652",
@@ -670,14 +631,48 @@ function AddBlockButtons({ onAddText, onAddMedia }) {
 }
 
 // ─── Main Page ────────────────────────────────────────────
-export default function CreateEntryPage() {
+export default function EditEntryPage() {
+  const { id } = useParams();
   const navigate = useNavigate();
+  const api = useApi();
+
   const [title, setTitle] = useState("");
-  const [blocks, setBlocks] = useState([
-    { id: Date.now(), type: "text", value: "" },
-  ]);
+  const [blocks, setBlocks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
   const [pendingInsertIndex, setPendingInsertIndex] = useState(null);
+
+  // fetch existing entry
+  useEffect(() => {
+    const fetchEntry = async () => {
+      try {
+        const res = await api.get(`/journal/${id}`);
+        const entry = res.data.entry;
+        setTitle(entry.title);
+        // map existing blocks to local format — existing media has url, no file
+        setBlocks(
+          entry.blocks.map((b) => ({
+            id: b._id,
+            type: b.type,
+            value: b.value || "",
+            url: b.url || null, // existing cloudinary url
+            publicId: b.publicId || null,
+            preview: null, // no local preview for existing media
+            file: null, // no file for existing media
+          })),
+        );
+      } catch (err) {
+        console.log("load error ", err.message);
+
+        alert("Failed to load entry.");
+        navigate("/dashboard");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchEntry();
+  }, [id]);
 
   const openCamera = (afterIndex = blocks.length - 1) => {
     setPendingInsertIndex(afterIndex);
@@ -692,7 +687,7 @@ export default function CreateEntryPage() {
   };
 
   const insertMediaBlock = ({ file, preview, type }) => {
-    const newBlock = { id: Date.now(), type, file, preview };
+    const newBlock = { id: Date.now(), type, file, preview, url: null };
     const updated = [...blocks];
     updated.splice((pendingInsertIndex ?? blocks.length - 1) + 1, 0, newBlock);
     setBlocks(updated);
@@ -706,49 +701,67 @@ export default function CreateEntryPage() {
   const deleteBlock = (id) => {
     setBlocks((prev) => prev.filter((b) => b.id !== id));
   };
-
-  // inside CreateEntryPage component, add:
-  const api = useApi();
-  const [saving, setSaving] = useState(false);
-
+  const { tokenRef } = useAuth();
+  // console.log(tokenRef);
   const handleSave = async () => {
     if (!title.trim()) {
       alert("Please add a title before saving.");
       return;
     }
-
     setSaving(true);
     try {
       const formData = new FormData();
       formData.append("title", title);
 
-      // build blocks array for JSON — media blocks get a fileIndex
       const files = [];
       const blocksForApi = blocks.map((block) => {
         if (block.type === "text") {
           return { type: "text", value: block.value };
-        } else {
+        } else if (block.file) {
+          // new media block — has a file to upload
           const fileIndex = files.length;
           files.push(block.file);
           return { type: block.type, fileIndex };
+        } else {
+          // existing media block — keep url and publicId
+          return { type: block.type, url: block.url, publicId: block.publicId };
         }
       });
 
       formData.append("blocks", JSON.stringify(blocksForApi));
       files.forEach((file) => formData.append("files", file));
-
-      await api.post("/journal/create", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
+      // console.log("token being sent ", tokenRef.current);
+      await api.put(`/journal/update/${id}`, formData, {
+        headers: {
+          Authorization: `Bearer ${tokenRef.current}`, // ← pass directly
+        },
       });
 
-      navigate("/dashboard");
+      navigate(`/entry/${id}`);
     } catch (err) {
-      console.log(err.message);
-      alert("Failed to save entry. Please try again.");
+      console.log("save error", err);
+      alert("Failed to save changes. Please try again.");
     } finally {
       setSaving(false);
     }
   };
+
+  if (loading) {
+    return (
+      <div
+        className="flex flex-col"
+        style={{ minHeight: "100vh", backgroundColor: "#faf7f2" }}
+      >
+        <Header />
+        <main className="flex-1 flex items-center justify-center">
+          <p style={{ color: "#a08c72", fontFamily: "Georgia, serif" }}>
+            Loading...
+          </p>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div
@@ -759,7 +772,7 @@ export default function CreateEntryPage() {
 
       <main className="flex-1 w-full max-w-2xl mx-auto px-6 py-10">
         <button
-          onClick={() => navigate("/dashboard")}
+          onClick={() => navigate(`/entry/${id}`)}
           className="text-sm mb-8 hover:underline"
           style={{
             color: "#a08c72",
@@ -769,7 +782,7 @@ export default function CreateEntryPage() {
             padding: 0,
           }}
         >
-          ← Back to journal
+          ← Back to entry
         </button>
 
         <input
@@ -784,7 +797,6 @@ export default function CreateEntryPage() {
             border: "none",
             borderBottom: "2px solid #ede8df",
             paddingBottom: "12px",
-            transition: "border-color 0.2s ease",
           }}
           onFocus={(e) => (e.target.style.borderBottomColor = "#c4a882")}
           onBlur={(e) => (e.target.style.borderBottomColor = "#ede8df")}
@@ -829,7 +841,7 @@ export default function CreateEntryPage() {
         <div className="flex gap-3">
           <button
             onClick={() => addTextBlock()}
-            className="px-4 py-2 rounded-full text-sm hover:opacity-80 transition-opacity"
+            className="px-4 py-2 rounded-full text-sm hover:opacity-80"
             style={{
               backgroundColor: "#f5f0e8",
               color: "#7a6652",
@@ -841,7 +853,7 @@ export default function CreateEntryPage() {
           </button>
           <button
             onClick={() => openCamera()}
-            className="px-4 py-2 rounded-full text-sm hover:opacity-80 transition-opacity"
+            className="px-4 py-2 rounded-full text-sm hover:opacity-80"
             style={{
               backgroundColor: "#f5f0e8",
               color: "#7a6652",
@@ -855,7 +867,7 @@ export default function CreateEntryPage() {
         <button
           onClick={handleSave}
           disabled={saving}
-          className="px-6 py-2 rounded-full text-sm font-semibold hover:opacity-90 transition-opacity"
+          className="px-6 py-2 rounded-full text-sm font-semibold hover:opacity-90"
           style={{
             backgroundColor: "#c4a882",
             color: "#fffdf9",
@@ -864,11 +876,10 @@ export default function CreateEntryPage() {
             opacity: saving ? 0.7 : 1,
           }}
         >
-          {saving ? "Saving..." : "Save Entry"}
+          {saving ? "Saving..." : "Save Changes"}
         </button>
       </div>
 
-      {/* Camera modal */}
       {showCamera && (
         <CameraModal
           onCapture={insertMediaBlock}

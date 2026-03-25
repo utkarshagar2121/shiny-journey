@@ -52,6 +52,7 @@ function CameraModal({ onCapture, onClose }) {
         devices.filter((d) => d.kind === "videoinput").length > 1,
       );
     });
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     startStream("user");
     return () => {
       if (streamRef.current)

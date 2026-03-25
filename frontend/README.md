@@ -50,16 +50,7 @@ cd frontend
 npm install
 ```
 
-### 2. Configure API URL
-
-In `src/api/axios.js` and `src/api/useApi.js`, update the `baseURL` to match your backend:
-
-```js
-baseURL: "http://localhost:5000/api"; // development
-// baseURL: "https://your-backend.railway.app/api"  // production
-```
-
-### 3. Run the dev server
+### 2. Run the dev server
 
 ```bash
 npm run dev

@@ -5,7 +5,7 @@ export function useApi() {
   const { tokenRef, refresh, logout } = useAuth();
 
   const api = axios.create({
-    baseURL: "http://localhost:5000/api",
+    baseURL: "https://memoria-backend-av9g.onrender.com/api",
   });
 
   // eslint-disable-next-line react-hooks/refs

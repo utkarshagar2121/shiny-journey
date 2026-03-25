@@ -23,7 +23,7 @@ const app = express();
 //middleware
 app.use(
   cors({
-    origin: true,
+    origin: "https://shiny-journey-fawn.vercel.app/dashboard",
     credentials: true,
   }),
 );

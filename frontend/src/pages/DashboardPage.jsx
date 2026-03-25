@@ -115,7 +115,6 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (accessToken) {
-      // ← only fetch when token is ready
       fetchEntries();
     }
   }, [accessToken]);
@@ -127,7 +126,7 @@ export default function DashboardPage() {
       setPage(1);
     }, 400);
     return () => clearTimeout(timer);
-  }, [search, accessToken]);
+  }, [search]);
 
   return (
     <div
